@@ -1102,5 +1102,3 @@ ETZION, Opher; NIBLETT, Peter. **Event Processing in Action**. Greenwich: Mannin
 APACHE SOFTWARE FOUNDATION. **FlinkCEP: Complex Event Processing for Flink**. Documentação oficial do Apache Flink. Disponível em: https://nightlies.apache.org/flink/flink-docs-stable/docs/libs/cep/. Acesso em: 18 set. 2026.
 
 BANCO CENTRAL DO BRASIL. **Regulamento do Pix**. Brasília: BCB, 2026.
-
-> Observação sobre a referência de Durgude: no registro disponível, o título do artigo e o do periódico coincidem, e o local de publicação não consta. A entrada acima segue esse registro, com o periódico em destaque conforme a NBR 6023. Se o material original trouxer local de publicação, acrescente-o antes do volume.
