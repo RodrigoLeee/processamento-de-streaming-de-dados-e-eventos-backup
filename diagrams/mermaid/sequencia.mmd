@@ -1,0 +1,58 @@
+flowchart LR
+    subgraph Borda["Borda - dispositivo do cliente"]
+        A[App Mobile<br/>filtragem, agregacao local,<br/>buffer offline]
+    end
+
+    subgraph Produtores["Produtores no backend"]
+        B[Pix Service]
+        C[Card Authorizer]
+        D[Core Bancario via CDC]
+        E[Observabilidade / APM]
+    end
+
+    subgraph Kafka["Event Backbone - Apache Kafka KRaft"]
+        T1[(raw.business.events<br/>key = clienteId)]
+        T2[(raw.technical.events<br/>key = servico)]
+        T3[(enriched.events)]
+        T4[(complex.events)]
+        T5[(dlq.events)]
+    end
+
+    subgraph EPN["Event Processing Network"]
+        EPA1[EPA Enriquecimento]
+        EPA2[EPA Fraude]
+        EPA3[EPA Risco de Credito]
+        EPA4[EPA Saude Tecnica]
+    end
+
+    subgraph Twin["Gemeo Digital"]
+        GD[Estado do cliente e da plataforma<br/>simulacao e previsao]
+    end
+
+    subgraph Consumidores
+        R1[Motor de Decisao ECA]
+        R2[Notificacao Push]
+        R3[Data Lake / Feature Store]
+        R4[SRE - alertas e auto-scaling]
+    end
+
+    A --> T1
+    B --> T1
+    C --> T1
+    D --> T1
+    E --> T2
+    T1 --> EPA1 --> T3
+    EPA1 -.schema invalido.-> T5
+    T3 --> EPA2 --> T4
+    T3 --> EPA3 --> T4
+    T2 --> EPA4 --> T4
+    T4 --> GD
+    T3 --> GD
+    GD --> R1
+    T4 --> R1
+    T4 --> R2
+    T4 --> R3
+    T4 --> R4
+    R1 -.acao em malha fechada.-> B
+    R1 -.acao em malha fechada.-> A
+    R4 -.auto-scaling.-> EPN

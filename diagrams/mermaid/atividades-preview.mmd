@@ -1,0 +1,37 @@
+flowchart TD
+    S([Evento produzido na borda]) --> PRE[Pre-analise local:<br/>filtragem e agregacao no dispositivo]
+    PRE --> V{Schema valido?}
+    V -->|Nao| DLQ[(Dead Letter Queue)]
+    V -->|Sim| P[Particionar por clienteId]
+    P --> Q[Persistir no topico raw<br/>replicacao 3, acks=all]
+    Q --> DEDUP{Duplicado?<br/>idempotencia por eventId}
+    DEDUP -->|Sim| DESC[Descartar]
+    DEDUP -->|Nao| WM{eventTime anterior<br/>a watermark?}
+    WM -->|Sim, atraso tolerado| REPROC[Reprocessar janela<br/>e emitir correcao]
+    WM -->|Sim, atraso excessivo| METR[Descartar e contabilizar<br/>metrica de perda]
+    WM -->|Nao| ENR[Enriquecer com estado<br/>KTable e Gemeo Digital]
+    REPROC --> ENR
+
+    ENR --> FORK{{fork}}
+    FORK --> C1[Avaliar regras de fraude]
+    FORK --> C2[Avaliar regras de credito]
+    FORK --> C3[Avaliar regras de engajamento]
+
+    C1 --> J{{join}}
+    C2 --> J
+    C3 --> J
+
+    J --> M{Algum padrao casou?}
+    M -->|Nao| ARQ[Arquivar no Data Lake<br/>para reprocessamento e treino]
+    M -->|Sim| ECA[Aplicar regra ECA sobre<br/>o evento complexo]
+    ECA --> SC{Score acima do limiar<br/>de acao automatica?}
+    SC -->|Nao| FILA[Fila de analise humana]
+    SC -->|Sim| ACAO[Bloquear, exigir step-up auth<br/>ou notificar]
+    ACAO --> AUD[Registrar trilha de auditoria<br/>com lineage completo]
+    FILA --> AUD
+    AUD --> GD[Atualizar estado do Gemeo Digital]
+    ARQ --> F([Fim])
+    GD --> F
+    DESC --> F
+    DLQ --> F
+    METR --> F

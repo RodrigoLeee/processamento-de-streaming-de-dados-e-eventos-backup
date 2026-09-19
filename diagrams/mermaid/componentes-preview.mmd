@@ -1,0 +1,23 @@
+stateDiagram-v2
+    [*] --> Ocioso : EPA inicializado
+
+    Ocioso --> ParcialmenteCasado : primeiro evento do padrao / abre janela e cria contexto por clienteId
+
+    ParcialmenteCasado --> ParcialmenteCasado : evento intermediario casa / avanca estado e acumula lineage
+
+    ParcialmenteCasado --> Casado : ultimo evento casa dentro da janela
+
+    ParcialmenteCasado --> Expirado : watermark ultrapassa o fim da janela / descarta contexto e libera memoria
+
+    ParcialmenteCasado --> Invalidado : evento de negacao, ex. biometria confirmada / padrao refutado
+
+    Casado --> Emitido : deriva EventoComplexo e publica
+
+    Emitido --> AguardandoResposta : regra ECA avalia e o Motor de Decisao age
+    AguardandoResposta --> Confirmado : cliente confirma fraude / rotula amostra
+    AguardandoResposta --> FalsoPositivo : cliente confirma legitimidade / ajusta limiar da regra
+
+    Expirado --> Ocioso
+    Invalidado --> Ocioso
+    Confirmado --> [*]
+    FalsoPositivo --> [*]

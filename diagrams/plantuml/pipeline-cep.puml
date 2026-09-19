@@ -1,0 +1,60 @@
+@startuml pipeline-cep
+|Borda|
+start
+:Capturar evento no dispositivo;
+:Pré-análise local — filtragem e agregação;
+:Carimbar eventTime;
+
+|Ingestão|
+:Receber evento;
+if (Schema válido no Registry?) then (não)
+  :Encaminhar para Dead Letter Queue;
+  stop
+else (sim)
+endif
+:Particionar por clienteId;
+:Persistir no tópico raw (replicação 3, acks=all);
+if (eventId já processado?) then (sim)
+  :Descartar por idempotência;
+  stop
+else (não)
+endif
+
+|Processamento CEP|
+if (eventTime anterior à watermark?) then (sim, atraso tolerado)
+  :Reprocessar janela e emitir correção;
+elseif (sim, atraso excessivo) then
+  :Descartar e contabilizar métrica de perda;
+  stop
+else (não)
+endif
+:Enriquecer com KTable e Gêmeo Digital;
+
+fork
+  :Avaliar regras de fraude;
+fork again
+  :Avaliar regras de crédito;
+fork again
+  :Avaliar regras de engajamento;
+end fork
+
+if (Algum padrão casou?) then (não)
+  |Persistência|
+  :Arquivar no Data Lake para replay e treino;
+  stop
+else (sim)
+endif
+|Processamento CEP|
+:Derivar e publicar evento complexo;
+
+|Decisão|
+:Aplicar regra ECA sobre o evento complexo;
+if (Score acima do limiar de ação automática?) then (sim)
+  :Executar ação — bloquear, exigir step-up auth ou notificar;
+else (não)
+  :Encaminhar à fila de análise humana;
+endif
+:Registrar trilha de auditoria com lineage completo;
+:Atualizar estado do Gêmeo Digital;
+stop
+@enduml

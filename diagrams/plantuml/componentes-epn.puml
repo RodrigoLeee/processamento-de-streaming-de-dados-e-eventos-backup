@@ -1,0 +1,89 @@
+@startuml componentes-epn
+skinparam componentStyle uml2
+skinparam linetype ortho
+skinparam shadowing false
+skinparam nodesep 25
+skinparam ranksep 45
+skinparam defaultFontName Helvetica
+skinparam defaultFontSize 12
+
+package "1. Borda — dispositivo do cliente" as P1 {
+  component [App Mobile] as App
+}
+note right of App
+  filtragem, agregação local,
+  buffer offline, carimbo de eventTime
+end note
+
+package "2. Produtores — backend" as P2 {
+  component [Pix Service] as Pix
+  component [Card Authorizer] as Card
+  component [Core Bancário] as Core
+  component [Observabilidade / APM] as APM
+}
+
+package "3. Event Backbone — Apache Kafka (KRaft)" as P3 {
+  queue "raw.business.events\n64 partições, key=clienteId" as Tbus
+  queue "raw.technical.events\n128 partições, key=servico" as Ttec
+  queue "enriched.events\n64 partições" as Tenr
+  queue "complex.events\n12 partições" as Tcpx
+  queue "dlq.events" as Tdlq
+}
+
+package "4. Event Processing Network" as P4 {
+  component [EPA Enriquecimento] as E1
+  component [EPA Fraude] as E2
+  component [EPA Risco de Crédito] as E3
+  component [EPA Saúde Técnica] as E4
+}
+
+package "5. Gêmeo Digital" as P5 {
+  component [Estado do Cliente] as GDC
+  component [Estado da Plataforma] as GDP
+  component [Motor de Simulação] as SIM
+}
+
+package "6. Consumidores" as P6 {
+  component [Motor de Decisão ECA] as MD
+  component [Notificação Push] as Push
+  component [Data Lake / Feature Store] as Lake
+  component [SRE — alertas e auto-scaling] as SRE
+}
+
+App --> Tbus
+Pix --> Tbus
+Card --> Tbus
+Core ..> Tbus : <<CDC / Debezium>>
+APM --> Ttec
+
+Tbus --> E1
+E1 --> Tenr
+E1 ..> Tdlq : <<schema inválido>>
+Tenr --> E2
+Tenr --> E3
+Ttec --> E4
+E2 --> Tcpx
+E3 --> Tcpx
+E4 --> Tcpx
+
+Tcpx --> GDC
+Tcpx --> GDP
+GDC --> SIM
+GDP --> SIM
+
+Tcpx --> MD
+Tcpx --> Push
+Tcpx --> Lake
+Tcpx --> SRE
+SIM --> MD
+
+MD ..> Pix : <<atuação em malha fechada>>
+MD ..> App : <<atuação em malha fechada>>
+SRE ..> E2 : <<auto-scaling>>
+
+App -[hidden]-> Pix
+Pix -[hidden]-> Tbus
+Tbus -[hidden]-> E1
+E1 -[hidden]-> GDC
+GDC -[hidden]-> MD
+@enduml

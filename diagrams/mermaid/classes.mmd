@@ -1,0 +1,144 @@
+classDiagram
+    class Evento {
+        <<abstract>>
+        +UUID eventId
+        +String tipo
+        +Instant eventTime
+        +Instant ingestionTime
+        +String origem
+        +int versaoSchema
+        +chaveParticionamento() String
+    }
+
+    class EventoSimples {
+        <<abstract>>
+        +String correlationId
+    }
+
+    class EventoComplexo {
+        <<abstract>>
+        +List~UUID~ eventosConstituintes
+        +double confianca
+        +String regraId
+        +Severidade severidade
+    }
+
+    class EventoNegocio {
+        <<abstract>>
+        +String clienteId
+    }
+
+    class EventoTecnico {
+        <<abstract>>
+        +String servico
+        +String instanciaId
+    }
+
+    class PixEnviado {
+        +String txId
+        +BigDecimal valor
+        +String chaveDestino
+        +String dispositivoId
+    }
+
+    class LoginRealizado {
+        +String deviceId
+        +GeoLocalizacao geo
+        +boolean biometria
+    }
+
+    class CompraCartaoAutorizada {
+        +BigDecimal valor
+        +String mcc
+        +GeoLocalizacao geo
+    }
+
+    class RequisicaoAPI {
+        +String endpoint
+        +int latenciaMs
+        +int httpStatus
+    }
+
+    class SuspeitaFraudeTomadaDeConta {
+        +double scoreRisco
+        +AcaoRecomendada acao
+    }
+
+    class DegradacaoPixIminente {
+        +int latenciaMediaMs
+        +double taxaErro
+        +String causaProvavel
+    }
+
+    class RegraCEP {
+        +String regraId
+        +String expressaoEPL
+        +Duration janela
+        +PoliticaAtraso politicaLateEvents
+        +avaliar(List~Evento~) EventoComplexo
+    }
+
+    class RegraECA {
+        +String regraId
+        +String eventoGatilho
+        +String condicao
+        +TipoAcao acao
+        +disparar(Evento) AcaoResposta
+    }
+
+    class JanelaTemporal {
+        +Instant inicio
+        +Instant fim
+        +TipoJanela tipo
+        +Instant watermark
+    }
+
+    class EventProcessingAgent {
+        +String agenteId
+        +List~String~ topicosEntrada
+        +String topicoSaida
+        +processar(Evento) void
+    }
+
+    class GemeoDigitalCliente {
+        +String clienteId
+        +EstadoComportamental estado
+        +double scoreRiscoAtual
+        +List~String~ devicesConhecidos
+        +sincronizar(Evento) void
+        +simular(Cenario) Previsao
+    }
+
+    class Cliente {
+        +String clienteId
+        +String cpfHash
+        +PerfilRisco perfil
+    }
+
+    class AcaoResposta {
+        +String acaoId
+        +TipoAcao tipo
+        +executar() void
+    }
+
+    Evento <|-- EventoSimples
+    Evento <|-- EventoComplexo
+    EventoSimples <|-- EventoNegocio
+    EventoSimples <|-- EventoTecnico
+    EventoNegocio <|-- PixEnviado
+    EventoNegocio <|-- LoginRealizado
+    EventoNegocio <|-- CompraCartaoAutorizada
+    EventoTecnico <|-- RequisicaoAPI
+    EventoComplexo <|-- SuspeitaFraudeTomadaDeConta
+    EventoComplexo <|-- DegradacaoPixIminente
+
+    EventoComplexo "1" o-- "2..*" Evento : deriva de
+    EventoComplexo "1" --> "1" JanelaTemporal
+    EventoComplexo "1" --> "1" RegraCEP : produzido por
+    RegraECA "1" ..> "1" EventoComplexo : reage a
+    RegraECA "1" --> "1" AcaoResposta : dispara
+    EventProcessingAgent "1" --> "*" RegraCEP : aplica
+    Cliente "1" --> "*" EventoNegocio : gera
+    Cliente "1" --> "1" GemeoDigitalCliente : é espelhado por
+    GemeoDigitalCliente "1" ..> "*" Evento : consome
+    GemeoDigitalCliente "1" --> "*" AcaoResposta : recomenda

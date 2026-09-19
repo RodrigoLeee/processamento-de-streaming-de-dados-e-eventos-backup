@@ -1,0 +1,44 @@
+sequenceDiagram
+    autonumber
+    actor F as Fraudador
+    participant App as App Nubank
+    participant Auth as Auth Service
+    participant Pix as Pix Service
+    participant K as Kafka
+    participant E1 as EPA Enriquecimento
+    participant E2 as EPA Fraude
+    participant GD as Gemeo Digital
+    participant MD as Motor de Decisao ECA
+    actor C as Cliente legitimo
+
+    F->>App: Login com credenciais roubadas, dispositivo novo
+    App->>Auth: autenticar()
+    Auth->>K: publish LoginRealizado deviceNovo=true
+    K->>E1: consume
+    E1->>GD: consulta estado do gemeo: devices conhecidos, geo habitual
+    GD-->>E1: dispositivo desconhecido, distancia 1.200 km do habitual
+    E1->>K: publish LoginEnriquecido scoreDevice=0.9
+    K->>E2: consume, abre janela de 10 min para o clienteId
+
+    F->>App: Altera senha
+    Auth->>K: publish SenhaAlterada
+    K->>E2: consume, padrao parcial 2 de 4
+
+    F->>App: Cadastra nova chave Pix
+    Pix->>K: publish ChavePixCadastrada
+    K->>E2: consume, padrao parcial 3 de 4
+
+    F->>App: Solicita Pix de R$ 4.900
+    Pix->>K: publish PixSolicitado
+    K->>E2: consume, padrao completo em 6 min
+    E2->>E2: deriva SuspeitaFraudeTomadaDeConta score=0.94
+    E2->>K: publish em complex.events
+    K->>MD: consume
+    MD->>MD: avalia regra ECA: score >= 0.9 entao bloquear
+    MD->>Pix: bloquearTransacao(txId)
+    Pix-->>App: Pix recusado, verificacao necessaria
+    MD->>C: notificacao push de confirmacao
+    C-->>MD: Nao reconheco a transacao
+    MD->>Auth: bloquear sessao e reverter chave Pix
+    MD->>GD: atualiza estado do gemeo: fraude confirmada
+    GD->>E2: realimenta ajuste de limiar da regra
